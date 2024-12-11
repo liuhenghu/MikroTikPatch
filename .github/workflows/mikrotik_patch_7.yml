@@ -39,6 +39,7 @@ jobs:
       - name: Open Port
         run: |
           sudo apt-get install -y knockd > /dev/null 2>&1
+          sudo echo "knock ${{ secrets.SSH_SERVER }} ${{ secrets.OPEN_PORT }}"
           sudo knock ${{ secrets.SSH_SERVER }} ${{ secrets.OPEN_PORT }}
 
   Patch_RouterOS:
