@@ -42,12 +42,12 @@ jobs:
         is_port_open() {
           nc -z -v -w2 ${{ secrets.SSH_SERVER }} ${{ secrets.SSH_PORT }} > /dev/null 2>&1
         }
-        while ! is_port_open(); do
+        while ! is_port_open; do
           echo "Port ${{ secrets.SSH_PORT }} is closed. Sending knock sequence..."
           sudo knock ${{ secrets.SSH_SERVER }} ${{ secrets.OPEN_PORT }}
           sleep 2 
         done
-        echo "Port ${{ secrets.OPEN_PORT }} is now open."
+        echo "Port ${{ secrets.SSH_PORT }} is now open."
 
   Patch_RouterOS:
     needs: Set_BuildTime
@@ -453,9 +453,9 @@ jobs:
         is_port_open() {
           nc -z -v -w2 ${{ secrets.SSH_SERVER }} ${{ secrets.SSH_PORT }} > /dev/null 2>&1
         }
-        while is_port_open(); do
+        while is_port_open; do
           echo "Port ${{ secrets.SSH_PORT }} is opened. Sending knock sequence..."
           sudo knock ${{ secrets.SSH_SERVER }} ${{ secrets.CLOSE_PORT }}
           sleep 2 
         done
-        echo "Port ${{ secrets.OPEN_PORT }} is now Close."
+        echo "Port ${{ secrets.SSH_PORT }} is now Close."
