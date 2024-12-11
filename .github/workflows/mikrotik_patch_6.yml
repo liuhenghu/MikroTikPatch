@@ -4,7 +4,7 @@ on:
   # push:
   #   branches: [ "main" ]
   schedule:
-    - cron: "0 0 * * *"
+    - cron: "0 2 * * *"
   workflow_dispatch:
 
 permissions:
@@ -37,6 +37,10 @@ jobs:
       - name: Set build time
         id: set_buildtime
         run: echo "BUILD_TIME=$(date +'%s')" >> $GITHUB_OUTPUT
+      - name: Open Port
+        run: |
+          sudo apt-get install -y knockd > /dev/null 2>&1
+          sudo knock ${{ secrets.SSH_SERVER }} ${{ secrets.OPEN_PORT }}
 
   Patch_RouterOS:
     needs: Set_BuildTime
@@ -218,21 +222,20 @@ jobs:
         sudo rm chr-$LATEST_VERSION$ARCH.img
 
 
-    # - name: Upload Files
-    #   if: steps.get_latest.outputs.has_new_version == 'true'
-    #   run: |
-    #     sudo mkdir -p ./publish/$LATEST_VERSION
-    #     echo $LATEST_VERSION $BUILD_TIME | sudo tee ./publish/NEWEST6.${{ matrix.channel }}
-    #     sudo cp CHANGELOG ./publish/$LATEST_VERSION/
-    #     sudo cp ./all_packages/*.npk ./publish/$LATEST_VERSION/
-    #     sudo chown -R root:root ./publish/
-    #     sudo apt-get install -y lftp ssh sshpass > /dev/null 2>&1
-    #     sudo -E lftp -u ${{ secrets.SSH_USERNAME }},'${{ secrets.SSH_PASSWORD }}' sftp://${{ secrets.SSH_SERVER }}:${{ secrets.SSH_PORT }} <<EOF
-    #     set sftp:auto-confirm yes
-    #     mirror --reverse --verbose --only-newer ./publish ${{ secrets.SSH_DIRECTORY }}
-    #     bye
-    #     EOF
-    #     sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_SERVER }} "chown -R 32768:32768 /rw/disk/${{ secrets.SSH_DIRECTORY }}/"     
+    - name: Upload Files
+      if: steps.get_latest.outputs.has_new_version == 'true'
+      run: |
+        sudo mkdir -p ./publish/$LATEST_VERSION
+        echo $LATEST_VERSION $BUILD_TIME | sudo tee ./publish/NEWEST6.${{ matrix.channel }}
+        sudo cp CHANGELOG ./publish/$LATEST_VERSION/
+        sudo cp ./all_packages/*.npk ./publish/$LATEST_VERSION/
+        sudo chown -R root:root ./publish/
+        sudo apt-get install -y lftp ssh sshpass > /dev/null 2>&1
+        sudo -E lftp -u ${{ secrets.SSH_USERNAME }},'${{ secrets.SSH_PASSWORD }}' sftp://${{ secrets.SSH_SERVER }}:${{ secrets.SSH_PORT }} <<EOF
+        set sftp:auto-confirm yes
+        mirror --reverse --verbose --only-newer ./publish ${{ secrets.SSH_DIRECTORY }}
+        bye
+        EOF   
     - name: Clear Cloudflare cache
       if: steps.get_latest.outputs.has_new_version == 'true'
       run: |
@@ -272,3 +275,11 @@ jobs:
           install-image-${{ env.LATEST_VERSION }}.zip
           routeros-x86-${{ env.LATEST_VERSION }}.npk
           all_packages-x86-${{ env.LATEST_VERSION }}.zip
+  Close_Port:
+    needs: Patch_RouterOS
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Close Port
+      run: |
+        sudo apt-get install -y knockd > /dev/null 2>&1
+        sudo knock ${{ secrets.SSH_SERVER }} ${{ secrets.CLOSE_PORT }}
