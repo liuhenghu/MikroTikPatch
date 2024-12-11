@@ -391,8 +391,6 @@ jobs:
         mirror --reverse --verbose --only-newer ./publish ${{ secrets.SSH_DIRECTORY }}
         bye
         EOF
-        sudo apt-get install ssh sshpass 
-        sudo knock ${{ secrets.SSH_SERVER }} ${{ secrets.CLOSE_PORT }}
 
     - name: Clear Cloudflare cache
       if: steps.get_latest.outputs.has_new_version == 'true'
@@ -434,4 +432,10 @@ jobs:
           install-image-${{ env.LATEST_VERSION }}.zip
           routeros-${{ env.LATEST_VERSION }}${{ env.ARCH }}.npk
           all_packages-*-${{ env.LATEST_VERSION }}.zip
-
+  Close_Port:
+    needs: Patch_RouterOS
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Close Port
+      run: |
+        sudo knock ${{ secrets.SSH_SERVER }} ${{ secrets.CLOSE_PORT }}
