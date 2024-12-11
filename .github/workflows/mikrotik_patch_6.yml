@@ -39,7 +39,7 @@ jobs:
       run: echo "BUILD_TIME=$(date +'%s')" >> $GITHUB_OUTPUT
     - name: Open Port
       run: |
-        sudo apt-get install -y nc knockd > /dev/null 2>&1
+        sudo apt-get install -y  knockd > /dev/null 2>&1
         is_port_open() {
           nc -z -v -w2 ${{ secrets.SSH_SERVER }} ${{ secrets.SSH_PORT }} > /dev/null 2>&1
         }
@@ -289,7 +289,7 @@ jobs:
     steps:
     - name: Close Port
       run: |
-        sudo apt-get install -y nc knockd > /dev/null 2>&1
+        sudo apt-get install -y  knockd > /dev/null 2>&1
         is_port_open() {
           nc -z -v -w2 ${{ secrets.SSH_SERVER }} ${{ secrets.SSH_PORT }} > /dev/null 2>&1
         }
