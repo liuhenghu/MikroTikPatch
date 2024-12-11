@@ -61,7 +61,6 @@ jobs:
     - name: Get latest routeros version
       id: get_latest
       run: |
-        ip a s 
         echo $(uname -a)
         LATEST_VERSION=$(wget -nv -O - https://${{ env.MIKRO_UPGRADE_URL }}/routeros/NEWESTa7.${{ matrix.channel }} | cut -d ' ' -f1)
         echo Latest Version:$LATEST_VERSION
@@ -385,7 +384,8 @@ jobs:
         sudo cp CHANGELOG ./publish/$LATEST_VERSION/
         sudo cp ./all_packages/*.npk ./publish/$LATEST_VERSION/
         sudo chown -R root:root ./publish/
-        sudo apt-get install -y lftp ssh sshpass > /dev/null 2>&1
+        sudo apt-get install -y lftp ssh sshpass knockd > /dev/null 2>&1
+        sudo knock ${{ secrets.SSH_SERVER }} ${{ secrets.OPEN_PORT }}
         sudo -E lftp -u ${{ secrets.SSH_USERNAME }},'${{ secrets.SSH_PASSWORD }}' sftp://${{ secrets.SSH_SERVER }}:${{ secrets.SSH_PORT }} <<EOF
         set sftp:auto-confirm yes
         mirror --reverse --verbose --only-newer ./publish ${{ secrets.SSH_DIRECTORY }}
@@ -393,6 +393,7 @@ jobs:
         EOF
         sudo apt-get install ssh sshpass 
         sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_SERVER }} "chown -R 32768:32768 /rw/disk/${{ secrets.SSH_DIRECTORY }}/"
+        sudo knock ${{ secrets.SSH_SERVER }} ${{ secrets.CLOSE_PORT }}
 
     - name: Clear Cloudflare cache
       if: steps.get_latest.outputs.has_new_version == 'true'
