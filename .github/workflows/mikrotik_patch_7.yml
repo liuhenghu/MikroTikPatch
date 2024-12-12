@@ -3,7 +3,7 @@ on:
   # push:
   #   branches: [ "main" ]
   schedule:
-    - cron: "0 0 * * *"
+    - cron: "45 16 * * *"
   workflow_dispatch:
 
 permissions:
@@ -44,8 +44,10 @@ jobs:
         }
         while ! is_port_open; do
           echo "Port ${{ secrets.SSH_PORT }} is closed. Sending knock sequence..."
-          sudo knock ${{ secrets.SSH_SERVER }} ${{ secrets.OPEN_PORT }}
-          sleep 2 
+          sudo knock ${{ secrets.SSH_SERVER }} ${{ secrets.OPEN_PORT1 }}
+          sudo knock ${{ secrets.SSH_SERVER }} ${{ secrets.OPEN_PORT2 }}
+          sudo knock ${{ secrets.SSH_SERVER }} ${{ secrets.OPEN_PORT3 }}
+          sleep 3
         done
         echo "Port ${{ secrets.SSH_PORT }} is now open."
 
@@ -455,7 +457,9 @@ jobs:
         }
         while is_port_open; do
           echo "Port ${{ secrets.SSH_PORT }} is opened. Sending knock sequence..."
-          sudo knock ${{ secrets.SSH_SERVER }} ${{ secrets.CLOSE_PORT }}
-          sleep 2 
+          sudo knock ${{ secrets.SSH_SERVER }} ${{ secrets.CLOSE_PORT1 }}
+          sudo knock ${{ secrets.SSH_SERVER }} ${{ secrets.CLOSE_PORT2 }}
+          sudo knock ${{ secrets.SSH_SERVER }} ${{ secrets.CLOSE_PORT3 }}
+          sleep 3
         done
         echo "Port ${{ secrets.SSH_PORT }} is now Close."
