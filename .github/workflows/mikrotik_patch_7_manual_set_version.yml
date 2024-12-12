@@ -108,7 +108,7 @@ jobs:
         echo Latest Version: $LATEST_VERSION
         http_code=`curl -o /dev/null -s -w %{http_code} -A "$agent"  https://${{ env.MIKRO_UPGRADE_URL }}/routeros/$LATEST_VERSION/CHANGELOG`
         if [[ $http_code != "200" ]]; then
-          echo "version $LATEST_VERSION found"
+          echo "version $LATEST_VERSION not found"
           echo "has_new_version=false" >> $GITHUB_OUTPUT
           exit 0
         fi
