@@ -1,4 +1,4 @@
-name: Manual Set Version Patch Mikrotik RouterOS 7.x 
+name: Manual Patch Mikrotik RouterOS 7.x 
 on:
   workflow_dispatch:
     inputs:
@@ -460,6 +460,7 @@ jobs:
         name: "RouterOS ${{ env.LATEST_VERSION }} ${{ matrix.arch }}"
         body_path: "CHANGELOG"
         tag_name: ${{ env.LATEST_VERSION }}${{ env.ARCH }}
+        make_latest:  false
         prerelease:  ${{ matrix.channel == 'testing' }}
         files: |
           mikrotik-${{ env.LATEST_VERSION }}${{ env.ARCH }}.iso
