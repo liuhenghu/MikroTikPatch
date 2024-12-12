@@ -38,6 +38,16 @@ jobs:
     outputs:
       BUILD_TIME: ${{ steps.set_buildtime.outputs.BUILD_TIME }}
     steps:
+    - name: Validate inputs
+      run: |
+        if [[ "${{ github.event.inputs.arch }}" != "x86" && "${{ github.event.inputs.arch }}" != "arm64" ]]; then
+          echo "Invalid arch value: ${{ github.event.inputs.arch }}"
+          exit 1
+        fi
+        if [[ "${{ github.event.inputs.channel }}" != "stable" && "${{ github.event.inputs.channel }}" != "testing" ]]; then
+          echo "Invalid channel value: ${{ github.event.inputs.channel }}"
+          exit 1
+        fi
     - name: Set build time
       id: set_buildtime
       run: echo "BUILD_TIME=$(date +'%s')" >> $GITHUB_OUTPUT
