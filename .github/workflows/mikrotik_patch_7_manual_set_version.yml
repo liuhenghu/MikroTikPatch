@@ -71,8 +71,9 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        arch: ${{ toJson([github.event.inputs.arch]) }}
-        channel: ${{ toJson([github.event.inputs.channel]) }}
+        include:
+        - arch: ${{ github.event.inputs.arch }}
+          channel: ${{ github.event.inputs.channel }}
     env:
       TZ: 'Asia/Shanghai'
       LATEST_VERSION: ""
