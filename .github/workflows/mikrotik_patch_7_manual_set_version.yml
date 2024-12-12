@@ -3,20 +3,12 @@ on:
   workflow_dispatch:
     inputs:
       arch:
-        description: "Select architecture"
+        description: "Enter architecture (x86, arm64)"
         required: true
-        type: choice
-        options:
-          - x86
-          - arm64
         default: x86
       channel:
-        description: "Select channel"
+        description: "Enter channel (stable, testing)"
         required: true
-        type: choice
-        options:
-          - stable
-          - testing
         default: stable
 
 permissions:
