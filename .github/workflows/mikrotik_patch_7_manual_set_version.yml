@@ -1,10 +1,19 @@
-name: Patch Mikrotik RouterOS 7.x
+name: Manual Patch Mikrotik RouterOS 7.x 
 on:
-  # push:
-  #   branches: [ "main" ]
-  schedule:
-    - cron: "45 16 * * *"
   workflow_dispatch:
+    inputs:
+      arch:
+        description: "Please enter  Arch (x86 or arm64)"
+        required: true
+        default: x86
+      channel:
+        description: "Please enter Channel (stable or testing)"
+        required: true
+        default: stable
+      version:
+        description: "Please enter Mikrotik7 version"
+        required: true
+
 
 permissions:
   contents: write
@@ -16,10 +25,10 @@ env:
   CUSTOM_NPK_SIGN_PUBLIC_KEY: ${{ secrets.CUSTOM_NPK_SIGN_PUBLIC_KEY }}
   CUSTOM_CLOUD_PUBLIC_KEY: ${{ secrets.CUSTOM_CLOUD_PUBLIC_KEY }}
   MIKRO_LICENSE_PUBLIC_KEY: ${{ secrets.MIKRO_LICENSE_PUBLIC_KEY }}
-  MIKRO_NPK_SIGN_PUBLIC_KEY: ${{ secrets.MIKRO_NPK_SIGN_PUBLIC_KEY }}
+  MIKRO_NPK_SIGN_PUBLIC_LKEY: ${{ secrets.MIKRO_NPK_SIGN_PUBLIC_LKEY }}
   MIKRO_CLOUD_PUBLIC_KEY: ${{ secrets.MIKRO_CLOUD_PUBLIC_KEY }}
-  MIKRO_LICENSE_URL: ${{ secrets.MIKRO_LICENSE_URL }}
-  CUSTOM_LICENSE_URL: ${{ secrets.CUSTOM_LICENSE_URL }}
+  MIKRO_LICENCE_URL: ${{ secrets.MIKRO_LICENCE_URL }}
+  CUSTOM_LICENCE_URL: ${{ secrets.CUSTOM_LICENCE_URL }}
   MIKRO_UPGRADE_URL: ${{ secrets.MIKRO_UPGRADE_URL }}
   CUSTOM_UPGRADE_URL: ${{ secrets.CUSTOM_UPGRADE_URL }}
   MIKRO_RENEW_URL: ${{ secrets.MIKRO_RENEW_URL }}
@@ -33,6 +42,21 @@ jobs:
     outputs:
       BUILD_TIME: ${{ steps.set_buildtime.outputs.BUILD_TIME }}
     steps:
+    - name: Validate inputs
+      run: |
+        if [[ "${{ github.event.inputs.arch }}" != "x86" && "${{ github.event.inputs.arch }}" != "arm64" ]]; then
+          echo "Invalid arch value: ${{ github.event.inputs.arch }}"
+          exit 1
+        fi
+        if [[ "${{ github.event.inputs.channel }}" != "stable" && "${{ github.event.inputs.channel }}" != "testing" ]]; then
+          echo "Invalid channel value: ${{ github.event.inputs.channel }}"
+          exit 1
+        fi  
+        VERSION="${{ github.event.inputs.version }}"
+        if [[ "${VERSION:0:1}" != "7" ]]; then
+            echo "Error: The Major version must start with '7'. You entered: $VERSION"
+            exit 1
+        fi
     - name: Set build time
       id: set_buildtime
       run: echo "BUILD_TIME=$(date +'%s')" >> $GITHUB_OUTPUT
@@ -56,8 +80,9 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        arch: [x86,arm64]
-        channel: [stable, testing]
+        include:
+        - arch: ${{ github.event.inputs.arch }}
+          channel: ${{ github.event.inputs.channel }}
     env:
       TZ: 'Asia/Shanghai'
       LATEST_VERSION: ""
@@ -76,21 +101,20 @@ jobs:
       id: get_latest
       run: |
         echo $(uname -a)
-        LATEST_VERSION=$(wget -nv -O - https://${{ env.MIKRO_UPGRADE_URL }}/routeros/NEWESTa7.${{ matrix.channel }} | cut -d ' ' -f1)
-        echo Latest Version:$LATEST_VERSION
-        if [ "${{ github.event_name }}" == "schedule" ]; then
-          _LATEST_VERSION=$(wget -nv -O - https://${{ env.CUSTOM_UPGRADE_URL }}/routeros/NEWESTa7.${{ matrix.channel }} | cut -d ' ' -f1)
-          if [ "$_LATEST_VERSION" == "$LATEST_VERSION" ]; then
-            echo "No new version found"
-            echo "has_new_version=false" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-        fi
-        echo "has_new_version=true" >> $GITHUB_OUTPUT
         BUILD_TIME=${{ needs.Set_BuildTime.outputs.BUILD_TIME }}
         echo Build Time:$BUILD_TIME
+        agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:58.0) Gecko/20100101 Firefox/58.0"
+        LATEST_VERSION=${{ github.event.inputs.version }}
+        echo Latest Version: $LATEST_VERSION
+        http_code=`curl -o /dev/null -s -w %{http_code} -A "$agent"  https://${{ env.MIKRO_UPGRADE_URL }}/routeros/$LATEST_VERSION/CHANGELOG`
+        if [[ $http_code != "200" ]]; then
+          echo "version $LATEST_VERSION not found"
+          echo "has_new_version=false" >> $GITHUB_OUTPUT
+          exit 0
+        fi
         wget -nv -O CHANGELOG https://${{ env.MIKRO_UPGRADE_URL }}/routeros/$LATEST_VERSION/CHANGELOG
         cat CHANGELOG
+        echo "has_new_version=true" >> $GITHUB_OUTPUT
         echo "LATEST_VERSION=${LATEST_VERSION}" >> $GITHUB_ENV
         echo "BUILD_TIME=${BUILD_TIME}" >> $GITHUB_ENV
         if [ "${{ matrix.arch }}" == "x86" ]; then
@@ -394,7 +418,6 @@ jobs:
       if: steps.get_latest.outputs.has_new_version == 'true'
       run: |
         sudo mkdir -p ./publish/$LATEST_VERSION
-        echo $LATEST_VERSION $BUILD_TIME | sudo tee ./publish/NEWESTa7.${{ matrix.channel }}
         sudo cp CHANGELOG ./publish/$LATEST_VERSION/
         sudo cp ./all_packages/*.npk ./publish/$LATEST_VERSION/
         sudo chown -R root:root ./publish/
@@ -436,7 +459,7 @@ jobs:
         name: "RouterOS ${{ env.LATEST_VERSION }} ${{ matrix.arch }}"
         body_path: "CHANGELOG"
         tag_name: ${{ env.LATEST_VERSION }}${{ env.ARCH }}
-        make_latest:  ${{ matrix.channel == 'stable'}} && ${{ matrix.arch == 'x86'}}
+        make_latest:  false
         prerelease:  ${{ matrix.channel == 'testing' }}
         files: |
           mikrotik-${{ env.LATEST_VERSION }}${{ env.ARCH }}.iso

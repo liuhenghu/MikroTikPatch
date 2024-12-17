@@ -4,7 +4,7 @@ on:
   # push:
   #   branches: [ "main" ]
   schedule:
-    - cron: "0 0 * * *"
+    - cron: "40 17 * * *"
   workflow_dispatch:
 
 permissions:
@@ -34,9 +34,23 @@ jobs:
     outputs:
       BUILD_TIME: ${{ steps.set_buildtime.outputs.BUILD_TIME }}
     steps:
-      - name: Set build time
-        id: set_buildtime
-        run: echo "BUILD_TIME=$(date +'%s')" >> $GITHUB_OUTPUT
+    - name: Set build time
+      id: set_buildtime
+      run: echo "BUILD_TIME=$(date +'%s')" >> $GITHUB_OUTPUT
+    - name: Open Port
+      run: |
+        sudo apt-get install -y  knockd > /dev/null 2>&1
+        is_port_open() {
+          nc -z -v -w2 ${{ secrets.SSH_SERVER }} ${{ secrets.SSH_PORT }} > /dev/null 2>&1
+        }
+        while ! is_port_open; do
+          echo "Port ${{ secrets.SSH_PORT }} is closed. Sending knock sequence..."
+          sudo knock ${{ secrets.SSH_SERVER }} ${{ secrets.OPEN_PORT1 }}
+          sudo knock ${{ secrets.SSH_SERVER }} ${{ secrets.OPEN_PORT2 }}
+          sudo knock ${{ secrets.SSH_SERVER }} ${{ secrets.OPEN_PORT3 }}
+          sleep 3 
+        done
+        echo "Port ${{ secrets.SSH_PORT }} is now open."
 
   Patch_RouterOS:
     needs: Set_BuildTime
@@ -231,8 +245,7 @@ jobs:
         set sftp:auto-confirm yes
         mirror --reverse --verbose --only-newer ./publish ${{ secrets.SSH_DIRECTORY }}
         bye
-        EOF
-        sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_SERVER }} "chown -R 32768:32768 /rw/disk/${{ secrets.SSH_DIRECTORY }}/"     
+        EOF   
     - name: Clear Cloudflare cache
       if: steps.get_latest.outputs.has_new_version == 'true'
       run: |
@@ -272,3 +285,21 @@ jobs:
           install-image-${{ env.LATEST_VERSION }}.zip
           routeros-x86-${{ env.LATEST_VERSION }}.npk
           all_packages-x86-${{ env.LATEST_VERSION }}.zip
+  Close_Port:
+    needs: Patch_RouterOS
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Close Port
+      run: |
+        sudo apt-get install -y  knockd > /dev/null 2>&1
+        is_port_open() {
+          nc -z -v -w2 ${{ secrets.SSH_SERVER }} ${{ secrets.SSH_PORT }} > /dev/null 2>&1
+        }
+        while is_port_open; do
+          echo "Port ${{ secrets.SSH_PORT }} is opened. Sending knock sequence..."
+          sudo knock ${{ secrets.SSH_SERVER }} ${{ secrets.CLOSE_PORT1 }}
+          sudo knock ${{ secrets.SSH_SERVER }} ${{ secrets.CLOSE_PORT2 }}
+          sudo knock ${{ secrets.SSH_SERVER }} ${{ secrets.CLOSE_PORT3 }}
+          sleep 3 
+        done
+        echo "Port ${{ secrets.SSH_PORT }} is now Close."
